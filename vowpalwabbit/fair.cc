@@ -11,7 +11,6 @@ namespace FAIR
     
     unordered_map<uint64_t, uint64_t> attribute_counts;
     unordered_map<uint64_t, float> lambdas;
-    double average_lambda;
     uint64_t event_count;
 
     COST_SENSITIVE::label cs_label;
@@ -23,15 +22,21 @@ namespace FAIR
     if (ec.feature_space[data.fair_space].size() == 0)
       THROW("A lambda example must have 1 or more protected attributes.");
     
-    data.average_lambda = 0.;
+    double average_lambda = 0.;
     for (features::iterator& f: ec.feature_space[data.fair_space])
       {
 	uint64_t key = f.index() + ec.ft_offset;
 	data.lambdas.emplace(key,f.value());
 	data.lambdas[key] = f.value();
-	data.average_lambda = f.value();
+	average_lambda += f.value();
       }
-    data.average_lambda /= ec.feature_space[data.fair_space].size();
+    average_lambda /= ec.feature_space[data.fair_space].size();
+
+    for (features::iterator& f: ec.feature_space[data.fair_space])
+      {
+	uint64_t key = f.index() + ec.ft_offset;
+	data.lambdas[key] -= average_lambda;
+      }
   }
   
   template <bool is_learn>
@@ -77,7 +82,7 @@ namespace FAIR
 		  
 		  float attribute_fraction = (float) data.attribute_counts[key] / (float) data.event_count; 
 		  
-		  wc.x += (data.lambdas[key] - data.average_lambda) / attribute_fraction;
+		  wc.x += data.lambdas[key] / attribute_fraction;
 		}
 	    
 	    data.cs_label.costs.push_back(wc);
