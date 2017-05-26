@@ -118,6 +118,8 @@ LEARNER::base_learner* fair_setup(vw& all)
     ss << data.k;
     all.args.push_back(ss.str());
   }
+  new(&data.attribute_counts)unordered_map<uint64_t,uint64_t>();
+  new(&data.lambdas)unordered_map<uint64_t,float>();
 
   LEARNER::learner<fair>& ret =
     init_multiclass_learner(&data, setup_base(all), predict_or_learn<true>, predict_or_learn<false>,all.p,1,prediction_type::multiclass);
