@@ -251,21 +251,23 @@ void unsubtract_example(example* ec)
 void make_single_prediction(ldf& data, single_learner& base, example& ec)
 {
   COST_SENSITIVE::label ld = ec.l.cs;
-  label_data simple_label;
-  simple_label.initial = 0.;
-  simple_label.label = FLT_MAX;
+  label_data simple_lbl;
+  simple_lbl.initial = 0.;
+  simple_lbl.label = FLT_MAX;
+  uint64_t old_offset = ec.ft_offset;
 
   LabelDict::add_example_namespace_from_memory(data.label_features, ec, ld.costs[0].class_index);
 
-  ec.l.simple = simple_label;
-  uint64_t old_offset = ec.ft_offset;
+  auto restore_guard = VW::scope_exit([&data, &ld, old_offset, &ec] {
+    ec.ft_offset = old_offset;
+    ld.costs[0].partial_prediction = ec.partial_prediction;
+    LabelDict::del_example_namespace_from_memory(data.label_features, ec, ld.costs[0].class_index);
+    ec.l.cs = ld;
+  });
+
+  ec.l.simple = simple_lbl;
   ec.ft_offset = data.ft_offset;
   base.predict(ec);  // make a prediction
-  ec.ft_offset = old_offset;
-  ld.costs[0].partial_prediction = ec.partial_prediction;
-
-  LabelDict::del_example_namespace_from_memory(data.label_features, ec, ld.costs[0].class_index);
-  ec.l.cs = ld;
 }
 
 bool test_ldf_sequence(ldf& data, multi_ex& ec_seq)
@@ -459,10 +461,53 @@ void do_actual_learning(ldf& data, single_learner& base, multi_ex& ec_seq_all)
 
   /////////////////////// add headers
   uint32_t K = (uint32_t)ec_seq.size();
+  uint32_t predicted_K = 0;
 
   bool isTest = test_ldf_sequence(data, ec_seq);
+
+  auto restore_guard = VW::scope_exit([&data, &ec_seq, K, &predicted_K] {
+    if (data.rank)
+    {
+      data.stored_preds[0].clear();
+      for (size_t k = 0; k < K; k++)
+      {
+        ec_seq[k]->pred.a_s = data.stored_preds[k];
+        ec_seq[0]->pred.a_s.push_back(data.a_s[k]);
+      }
+    }
+    else
+    {
+      // Mark the predicted subexample with its class_index, all other with 0
+      for (size_t k = 0; k < K; k++)
+      {
+        if (k == predicted_K)
+          ec_seq[k]->pred.multiclass = ec_seq[k]->l.cs.costs[0].class_index;
+        else
+          ec_seq[k]->pred.multiclass = 0;
+      }
+    }
+
+    ////////////////////// compute probabilities
+    if (data.is_probabilities)
+    {
+      float sum_prob = 0;
+      for (const auto& example : ec_seq)
+      {
+        // probability(correct_class) = 1 / (1+exp(-score)), where score is higher for better classes,
+        // but partial_prediction is lower for better classes (we are predicting the cost),
+        // so we need to take score = -partial_prediction,
+        // thus probability(correct_class) = 1 / (1+exp(-(-partial_prediction)))
+        float prob = 1.f / (1.f + correctedExp(example->partial_prediction));
+        example->pred.prob = prob;
+        sum_prob += prob;
+      }
+      // make sure that the probabilities sum up (exactly) to one
+      for (const auto& example : ec_seq) { example->pred.prob /= sum_prob; }
+    }
+  });
+
+  try{
   /////////////////////// do prediction
-  uint32_t predicted_K = 0;
   if (data.rank)
   {
     data.a_s.clear();
@@ -503,47 +548,8 @@ void do_actual_learning(ldf& data, single_learner& base, multi_ex& ec_seq_all)
     else
       do_actual_learning_oaa(data, base, ec_seq);
   }
-
-  if (data.rank)
-  {
-    data.stored_preds[0].clear();
-    for (size_t k = 0; k < K; k++)
-    {
-      ec_seq[k]->pred.a_s = data.stored_preds[k];
-      ec_seq[0]->pred.a_s.push_back(data.a_s[k]);
-    }
-  }
-  else
-  {
-    // Mark the predicted subexample with its class_index, all other with 0
-    for (size_t k = 0; k < K; k++)
-    {
-      if (k == predicted_K)
-        ec_seq[k]->pred.multiclass = ec_seq[k]->l.cs.costs[0].class_index;
-      else
-        ec_seq[k]->pred.multiclass = 0;
-    }
-  }
-
-  ////////////////////// compute probabilities
-  if (data.is_probabilities)
-  {
-    float sum_prob = 0;
-    for (const auto& example : ec_seq)
-    {
-      // probability(correct_class) = 1 / (1+exp(-score)), where score is higher for better classes,
-      // but partial_prediction is lower for better classes (we are predicting the cost),
-      // so we need to take score = -partial_prediction,
-      // thus probability(correct_class) = 1 / (1+exp(-(-partial_prediction)))
-      float prob = 1.f / (1.f + correctedExp(example->partial_prediction));
-      example->pred.prob = prob;
-      sum_prob += prob;
-    }
-    // make sure that the probabilities sum up (exactly) to one
-    for (const auto& example : ec_seq)
-    {
-      example->pred.prob /= sum_prob;
-    }
+  } catch(std::exception &e) {
+    data.all->trace_message << "CB got exception from base reductions: " << e.what() << std::endl;
   }
 }
 

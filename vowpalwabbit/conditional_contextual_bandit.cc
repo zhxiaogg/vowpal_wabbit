@@ -497,7 +497,6 @@ void learn_or_predict(ccb& data, multi_learner& base, multi_ex& examples)
 
   } catch(std::exception &e) {
     data.all->trace_message << "CCB got exception from base reductions: " << e.what() << std::endl;
-    throw;
   }
 
 }
