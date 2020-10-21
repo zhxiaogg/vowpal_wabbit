@@ -550,6 +550,7 @@ void do_actual_learning(ldf& data, single_learner& base, multi_ex& ec_seq_all)
   }
   } catch(std::exception &e) {
     data.all->trace_message << "CB got exception from base reductions: " << e.what() << std::endl;
+    throw;
   }
 }
 
