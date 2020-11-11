@@ -252,9 +252,10 @@ if(BUILD_DOCS)
   add_subdirectory(doc)
 endif()
 
-if(BUILD_JAVA)
-  add_subdirectory(java)
-endif()
+#if(BUILD_JAVA)
+#  add_subdirectory(java)
+#endif()
+add_subdirectory(java)
 
 if(BUILD_PYTHON)
   add_subdirectory(python)
