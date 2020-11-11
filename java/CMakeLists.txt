@@ -7,6 +7,7 @@ find_package(JNI REQUIRED)
 set(src_base src/main/c++)
 set(vw_jni_headers
   ${src_base}/jni_base_learner.h
+  ${src_base}/vowpalWabbit_learner_VWCCBLearner.h
   ${src_base}/vowpalWabbit_learner_VWActionProbsLearner.h
   ${src_base}/vowpalWabbit_learner_VWActionScoresLearner.h
   ${src_base}/vowpalWabbit_learner_VWLearners.h
@@ -23,6 +24,7 @@ set(vw_jni_headers
 
 set(vw_jni_sources
   ${src_base}/jni_base_learner.cc
+  ${src_base}/vowpalWabbit_learner_VWCCBLearner.cc
   ${src_base}/vowpalWabbit_learner_VWActionProbsLearner.cc
   ${src_base}/vowpalWabbit_learner_VWActionScoresLearner.cc
   ${src_base}/vowpalWabbit_learner_VWLearners.cc
@@ -55,7 +57,7 @@ if(STATIC_LINK_VW_JAVA)
   target_link_libraries(vw_jni PUBLIC -static-libgcc -static-libstdc++ -fPIC)
 else()
   # enable-new-dtags and rpath enables shared object library lookup in the location of libvw_spark_jni.so
-  target_link_libraries(vw_jni PUBLIC -fPIC -Wl,--enable-new-dtags -Wl,-rpath,\"\$ORIGIN\")
+  target_link_libraries(vw_jni PUBLIC -fPIC -Wl,-rpath,\"\$ORIGIN\")
 endif()
 
 # Replace version number in POM
