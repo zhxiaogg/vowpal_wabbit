@@ -1,10 +1,17 @@
 package vowpalWabbit;
 
+import org.scijava.nativelib.NativeLoader;
 import vowpalWabbit.learner.VWLearners;
+
+import java.io.IOException;
 
 public final class VW {
     static {
-        System.loadLibrary("vw_jni");
+        try {
+            NativeLoader.loadLibrary("vw_jni");
+        } catch (IOException e) {
+            throw new RuntimeException("cannot load jni lib", e);
+        }
     }
 
     /**
