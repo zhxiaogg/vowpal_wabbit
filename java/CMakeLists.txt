@@ -7,6 +7,7 @@ find_package(JNI REQUIRED)
 set(src_base src/main/c++)
 set(vw_jni_headers
   ${src_base}/jni_base_learner.h
+  ${src_base}/vowpalWabbit_learner_VWCCBLearner.h
   ${src_base}/vowpalWabbit_learner_VWActionProbsLearner.h
   ${src_base}/vowpalWabbit_learner_VWActionScoresLearner.h
   ${src_base}/vowpalWabbit_learner_VWLearners.h
@@ -23,6 +24,7 @@ set(vw_jni_headers
 
 set(vw_jni_sources
   ${src_base}/jni_base_learner.cc
+  ${src_base}/vowpalWabbit_learner_VWCCBLearner.cc
   ${src_base}/vowpalWabbit_learner_VWActionProbsLearner.cc
   ${src_base}/vowpalWabbit_learner_VWActionScoresLearner.cc
   ${src_base}/vowpalWabbit_learner_VWLearners.cc
@@ -46,13 +48,17 @@ target_include_directories(vw_jni PUBLIC
   ${JNI_INCLUDE_DIRS})
 
 # Ensure target directory exists
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/)
-add_custom_command(TARGET vw_jni POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vw_jni> ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/
-)
+# file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/)
+# add_custom_command(TARGET vw_jni POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vw_jni> ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/
+# )
 
 if(STATIC_LINK_VW_JAVA)
-  target_link_libraries(vw_jni PUBLIC -static-libgcc -static-libstdc++ -fPIC)
+    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        target_link_libraries(vw_jni PUBLIC -static-libstdc++ -fPIC)
+    else()
+        target_link_libraries(vw_jni PUBLIC -static-libgcc -static-libstdc++ -fPIC)
+    endif()
 else()
   # enable-new-dtags and rpath enables shared object library lookup in the location of libvw_spark_jni.so
   target_link_libraries(vw_jni PUBLIC -fPIC -Wl,--enable-new-dtags -Wl,-rpath,\"\$ORIGIN\")
@@ -75,10 +81,18 @@ if(VW_INSTALL)
 endif()
 
 if(NOT WIN32)
+
+  # see: https://github.com/scijava/native-lib-loader
+  if (APPLE)
+      set(JNI_LIB_DIR osx_64)
+  else()
+      set(JNI_LIB_DIR linux_64)
+  endif()
+
   # Ensure target directory exists
   file(MAKE_DIRECTORY target/classes)
   file(MAKE_DIRECTORY target/test-classes)
-  file(MAKE_DIRECTORY target/bin/natives/linux_64)
+  file(MAKE_DIRECTORY target/bin/natives/${JNI_LIB_DIR})
 
   # Development
   # - uncomment the following section to generate the jni headers
@@ -102,7 +116,7 @@ if(NOT WIN32)
   # add_dependencies(javaheaders javacompile)
 
   add_custom_command(TARGET vw_jni POST_BUILD
-      COMMAND cp $<TARGET_FILE:vw_jni> target/bin/natives/linux_64
+      COMMAND cp $<TARGET_FILE:vw_jni> target/bin/natives/${JNI_LIB_DIR}
       COMMAND echo $<TARGET_FILE:vw-bin> > ${CMAKE_CURRENT_SOURCE_DIR}/target/test-classes/vw-bin.txt
       # -B is batch mode and avoids the massive download progress print out
       COMMAND mvn -B verify

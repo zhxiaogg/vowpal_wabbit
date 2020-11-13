@@ -1,5 +1,9 @@
 package vowpalWabbit.learner;
 
+import org.scijava.nativelib.NativeLoader;
+
+import java.io.IOException;
+
 /**
  * This is the only entrance point to create a VWLearner.  It is the responsibility of the user to supply the type they want
  * given the VW command.  If that type is incorrect a {@link java.lang.ClassCastException} is thrown.  Refer to
@@ -8,11 +12,15 @@ package vowpalWabbit.learner;
  */
 final public class VWLearners {
     private enum VWReturnType {
-        Unknown, ActionProbs, ActionScores, Multiclass, Multilabels, Prob, Scalar, Scalars
+        Unknown, ActionProbs, ActionScores, Multiclass, Multilabels, Prob, Scalar, Scalars, DecisionProbs
     }
 
     static {
-        System.loadLibrary("vw_jni");
+        try {
+            NativeLoader.loadLibrary("vw_jni");
+        } catch (IOException e) {
+            throw new RuntimeException("cannot load jni lib", e);
+        }
     }
 
     private VWLearners() {}
@@ -49,6 +57,7 @@ final public class VWLearners {
             case Prob: return (T)new VWProbLearner(nativePointer);
             case Scalar: return (T)new VWScalarLearner(nativePointer);
             case Scalars: return (T)new VWScalarsLearner(nativePointer);
+            case DecisionProbs: return (T) new VWCCBLearner(nativePointer);
             case Unknown:
             default:
                 // Doing this will allow for all cases when a C object is made to be closed.
