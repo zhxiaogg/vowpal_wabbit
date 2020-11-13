@@ -61,7 +61,7 @@ if(STATIC_LINK_VW_JAVA)
     endif()
 else()
   # enable-new-dtags and rpath enables shared object library lookup in the location of libvw_spark_jni.so
-  target_link_libraries(vw_jni PUBLIC -fPIC -Wl,-rpath,\"\$ORIGIN\")
+  target_link_libraries(vw_jni PUBLIC -fPIC -Wl,--enable-new-dtags -Wl,-rpath,\"\$ORIGIN\")
 endif()
 
 # Replace version number in POM
