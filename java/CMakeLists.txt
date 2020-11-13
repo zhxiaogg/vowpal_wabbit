@@ -54,7 +54,11 @@ add_custom_command(TARGET vw_jni POST_BUILD
 )
 
 if(STATIC_LINK_VW_JAVA)
-  target_link_libraries(vw_jni PUBLIC -static-libgcc -static-libstdc++ -fPIC)
+    if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+        target_link_libraries(vw_jni PUBLIC -static-libstdc++ -fPIC)
+    else()
+        target_link_libraries(vw_jni PUBLIC -static-libgcc -static-libstdc++ -fPIC)
+    endif()
 else()
   # enable-new-dtags and rpath enables shared object library lookup in the location of libvw_spark_jni.so
   target_link_libraries(vw_jni PUBLIC -fPIC -Wl,-rpath,\"\$ORIGIN\")
