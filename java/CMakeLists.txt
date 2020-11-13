@@ -48,10 +48,10 @@ target_include_directories(vw_jni PUBLIC
   ${JNI_INCLUDE_DIRS})
 
 # Ensure target directory exists
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/)
-add_custom_command(TARGET vw_jni POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vw_jni> ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/
-)
+# file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/)
+# add_custom_command(TARGET vw_jni POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:vw_jni> ${CMAKE_CURRENT_SOURCE_DIR}/target/bin/natives/linux_64/
+# )
 
 if(STATIC_LINK_VW_JAVA)
     if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
@@ -81,10 +81,18 @@ if(VW_INSTALL)
 endif()
 
 if(NOT WIN32)
+
+  # see: https://github.com/scijava/native-lib-loader
+  if (APPLE)
+      set(JNI_LIB_DIR osx_64)
+  else()
+      set(JNI_LIB_DIR linux_64)
+  endif()
+
   # Ensure target directory exists
   file(MAKE_DIRECTORY target/classes)
   file(MAKE_DIRECTORY target/test-classes)
-  file(MAKE_DIRECTORY target/bin/natives/linux_64)
+  file(MAKE_DIRECTORY target/bin/natives/${JNI_LIB_DIR})
 
   # Development
   # - uncomment the following section to generate the jni headers
@@ -108,7 +116,7 @@ if(NOT WIN32)
   # add_dependencies(javaheaders javacompile)
 
   add_custom_command(TARGET vw_jni POST_BUILD
-      COMMAND cp $<TARGET_FILE:vw_jni> target/bin/natives/linux_64
+      COMMAND cp $<TARGET_FILE:vw_jni> target/bin/natives/${JNI_LIB_DIR}
       COMMAND echo $<TARGET_FILE:vw-bin> > ${CMAKE_CURRENT_SOURCE_DIR}/target/test-classes/vw-bin.txt
       # -B is batch mode and avoids the massive download progress print out
       COMMAND mvn -B verify

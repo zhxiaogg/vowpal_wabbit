@@ -1,5 +1,9 @@
 package vowpalWabbit.learner;
 
+import org.scijava.nativelib.NativeLoader;
+
+import java.io.IOException;
+
 /**
  * This is the only entrance point to create a VWLearner.  It is the responsibility of the user to supply the type they want
  * given the VW command.  If that type is incorrect a {@link java.lang.ClassCastException} is thrown.  Refer to
@@ -12,7 +16,11 @@ final public class VWLearners {
     }
 
     static {
-        System.loadLibrary("vw_jni");
+        try {
+            NativeLoader.loadLibrary("vw_jni");
+        } catch (IOException e) {
+            throw new RuntimeException("cannot load jni lib", e);
+        }
     }
 
     private VWLearners() {}
