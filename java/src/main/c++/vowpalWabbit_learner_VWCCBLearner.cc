@@ -15,7 +15,6 @@ jobject decision_scores_prediction(example *vec, JNIEnv *env)
 
   VW::decision_scores_t decision_scores = vec->pred.decision_scores;
   size_t num_slots = decision_scores.size();
-  std::cout << "num slots: " << num_slots << "\n";
 
   jobjectArray j_action_scores_array = env->NewObjectArray(num_slots, action_scores_class, 0);
   for (uint32_t i = 0; i < num_slots; ++i)
